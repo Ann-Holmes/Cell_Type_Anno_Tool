@@ -253,6 +253,10 @@ def main():
     # Display results
     st.subheader(f"Raw Data Results: {len(df_result)} entries")
 
+    # Reset index to add row numbers
+    df_result = df_result.reset_index(drop=True)
+    df_result.insert(0, "#", df_result.index + 1)
+
     # Calculate dynamic height based on row count (max 10 rows)
     row_count = min(len(df_result), 10)
     # Approximate 40px per row + 50px for header
@@ -265,12 +269,51 @@ def main():
         hide_index=True,
         height=dynamic_height,
         column_config={
+            "#": st.column_config.NumberColumn(
+                "#",
+                width="small",
+                required=True,
+            ),
             "PMID": st.column_config.LinkColumn(
                 "PMID",
                 display_text=r"https://pubmed.ncbi.nlm.nih.gov/(\d+)/",
             ),
         },
     )
+
+    # View Detail selector
+    st.subheader("View Detail")
+    if len(df_result) > 0:
+        row_options = ["Select a row to view details"] + [f"Row {i}" for i in range(1, len(df_result) + 1)]
+        selected_row = st.selectbox("Select a row", row_options, key="s3_detail_select")
+
+        if selected_row != "Select a row to view details":
+            row_idx = int(selected_row.split()[1]) - 1
+            row_data = df_result.iloc[row_idx]
+
+            # Display detail card
+            with st.container():
+                st.markdown("---")
+                st.markdown(f"### Details for Row {row_idx + 1}")
+
+                # Create columns for the detail card
+                detail_col1, detail_col2 = st.columns(2)
+
+                with detail_col1:
+                    for col in df_result.columns:
+                        if col == "#":
+                            continue
+                        val = row_data[col]
+                        if pd.notna(val) and val != "":
+                            if isinstance(val, str) and val.startswith("http"):
+                                st.markdown(f"**{col}:** [{val}]({val})")
+                            else:
+                                st.markdown(f"**{col}:** {val}")
+
+                with detail_col2:
+                    st.info("💡 All details for this entry are shown on the left")
+    else:
+        st.info("No data to display")
 
 
 if __name__ == "__main__":
