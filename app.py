@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 
 # Configure page (centered layout, not wide)
-st.set_page_config(page_title="Cellmarker Annotation App", layout="centered")
+st.set_page_config(
+    page_title="Cellmarker Annotation App",
+    page_icon="assets/cellmarker_anno_logo-3.png",
+    layout="centered"
+)
 
 # Path to the CellMarker database
 EXCEL_PATH = "data/Cell_marker_All.xlsx"
@@ -47,21 +51,19 @@ def main():
 
     with col2:
         # Set default to "Brain" if available, otherwise first option
-        default_tissue_index = tissue_class_list.index(
-            "Brain") if "Brain" in tissue_class_list else 0
+        default_tissue_index = (
+            tissue_class_list.index("Brain") if "Brain" in tissue_class_list else 0
+        )
         selected_tissue_class = st.selectbox(
-            "Select Tissue Class", tissue_class_list, index=default_tissue_index)
+            "Select Tissue Class", tissue_class_list, index=default_tissue_index
+        )
 
     # Filter by tissue_class
     df_filtered = df_filtered[df_filtered["tissue_class"] == selected_tissue_class]
 
     # Group by and count
     groupby_cols = ["cell_type", "cell_name", "marker", "Symbol"]
-    df_grouped = (
-        df_filtered.groupby(groupby_cols, dropna=False)
-        .size()
-        .reset_index(name="count")
-    )
+    df_grouped = df_filtered.groupby(groupby_cols, dropna=False).size().reset_index(name="count")
 
     # Add species and tissue_class columns at the beginning
     df_grouped.insert(0, "species", selected_species)
@@ -71,15 +73,17 @@ def main():
     df_grouped = df_grouped.sort_values("count", ascending=False)
 
     # Rename columns
-    df_grouped = df_grouped.rename(columns={
-        "species": "Species",
-        "tissue_class": "Tissue class",
-        "cell_type": "Normal/Tumor",
-        "cell_name": "Cell type",
-        "marker": "Marker",
-        "Symbol": "Symbol",
-        "count": "#Evidence"
-    })
+    df_grouped = df_grouped.rename(
+        columns={
+            "species": "Species",
+            "tissue_class": "Tissue class",
+            "cell_type": "Normal/Tumor",
+            "cell_name": "Cell type",
+            "marker": "Marker",
+            "Symbol": "Symbol",
+            "count": "#Evidence",
+        }
+    )
 
     # Display results
     st.subheader(f"Results: {len(df_grouped)} unique marker entries")
@@ -135,8 +139,10 @@ def main():
         # R List format
         output_code = "list(\n"
         output_code += ",\n".join(
-            [f'    `{cell}` = c({", ".join([f'"{s}"' for s in symbols])})'
-             for cell, symbols in cell_markers.items()]
+            [
+                f"    `{cell}` = c({', '.join([f'"{s}"' for s in symbols])})"
+                for cell, symbols in cell_markers.items()
+            ]
         )
         output_code += "\n)"
         st.code(output_code, language="r")
@@ -161,8 +167,8 @@ def main():
     section1_markers = df_grouped["Marker"].dropna().unique()
 
     df_candidate = df_filtered[
-        df_filtered["cell_name"].isin(section1_cell_names) &
-        df_filtered["marker"].isin(section1_markers)
+        df_filtered["cell_name"].isin(section1_cell_names)
+        & df_filtered["marker"].isin(section1_markers)
     ].copy()
 
     # Get all unique values (using new column names from df_grouped)
@@ -181,9 +187,10 @@ def main():
         selected_cell_name = st.selectbox(
             "Select Cell Name",
             ["All"] + all_cell_names,
-            index=all_cell_names.index(st.session_state.s3_cell_name) +
-            1 if st.session_state.s3_cell_name in all_cell_names else 0,
-            key="s3_cell_name_select"
+            index=all_cell_names.index(st.session_state.s3_cell_name) + 1
+            if st.session_state.s3_cell_name in all_cell_names
+            else 0,
+            key="s3_cell_name_select",
         )
 
     # If cell_name is selected, filter markers; otherwise show all
@@ -195,7 +202,10 @@ def main():
             .tolist()
         )
         # Reset marker if it's no longer in available options
-        if st.session_state.s3_marker != "All" and st.session_state.s3_marker not in available_markers:
+        if (
+            st.session_state.s3_marker != "All"
+            and st.session_state.s3_marker not in available_markers
+        ):
             st.session_state.s3_marker = "All"
     else:
         available_markers = all_markers
@@ -204,9 +214,10 @@ def main():
         selected_marker = st.selectbox(
             "Select Marker",
             ["All"] + available_markers,
-            index=available_markers.index(st.session_state.s3_marker) +
-            1 if st.session_state.s3_marker in available_markers else 0,
-            key="s3_marker_select"
+            index=available_markers.index(st.session_state.s3_marker) + 1
+            if st.session_state.s3_marker in available_markers
+            else 0,
+            key="s3_marker_select",
         )
 
     # Update session state
@@ -246,7 +257,7 @@ def main():
         "PMID": "PMID",
         "Title": "Title",
         "journal": "Journal",
-        "year": "Year"
+        "year": "Year",
     }
     df_result = df_result.rename(columns=column_mapping)
 
@@ -293,7 +304,9 @@ def main():
         # 2. Or selecting a different row (current_selection != selected_row_idx)
         # But NOT if s3_selected_row was just set to None (user closed details - requires explicit re-selection)
         s3_just_closed = st.session_state.get("s3_just_closed", False)
-        if not s3_just_closed and (current_selection is None or current_selection != selected_row_idx):
+        if not s3_just_closed and (
+            current_selection is None or current_selection != selected_row_idx
+        ):
             st.session_state.s3_selected_row = selected_row_idx
         # Reset the just_closed flag after processing
         if s3_just_closed:
@@ -307,7 +320,8 @@ def main():
             row_data = df_result.iloc[row_idx]
 
             # Enhanced CSS for styled card
-            st.markdown("""
+            st.markdown(
+                """
             <style>
             .detail-card {
                 border: 1px solid #d1d5db;
@@ -360,143 +374,219 @@ def main():
                 word-break: break-word;
             }
             </style>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
             # Detail card with enhanced styling
             with st.container(border=True):
-                st.markdown(f"""
+                st.markdown(
+                    f"""
                 <div class="detail-card">
                     <div class="detail-card-title">
                         <span>📋</span>
                         <span>Entry Details (Row {row_idx + 1})</span>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """,
+                    unsafe_allow_html=True,
+                )
 
                 # Gene information section (two columns)
                 gene_cols = ["Symbol", "Gene ID", "Gene name", "Gene type", "UNIPROT ID"]
                 available_gene_cols = [col for col in gene_cols if col in df_result.columns]
 
                 if available_gene_cols:
-                    st.markdown("""
+                    st.markdown(
+                        """
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <span>🧬</span>
                             <span>Gene Information</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
                     gene_col1, gene_col2 = st.columns(2)
 
                     with gene_col1:
                         st.markdown('<div class="detail-field">', unsafe_allow_html=True)
-                        for col in available_gene_cols[:len(available_gene_cols)//2 + len(available_gene_cols)%2]:
+                        for col in available_gene_cols[
+                            : len(available_gene_cols) // 2 + len(available_gene_cols) % 2
+                        ]:
                             val = row_data[col]
                             if pd.notna(val) and val != "":
                                 if isinstance(val, str) and val.startswith("http"):
-                                    st.markdown(f'<span class="detail-label">{col}:</span> <a href="{val}" target="_blank">{val}</a>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<span class="detail-label">{col}:</span> <a href="{val}" target="_blank">{val}</a>',
+                                        unsafe_allow_html=True,
+                                    )
                                 elif col == "Gene ID":
                                     # Convert to integer
                                     try:
                                         val_int = int(float(val))
-                                        st.markdown(f'<span class="detail-label">{col}:</span> <span class="detail-value">{val_int}</span>', unsafe_allow_html=True)
+                                        st.markdown(
+                                            f'<span class="detail-label">{col}:</span> <span class="detail-value">{val_int}</span>',
+                                            unsafe_allow_html=True,
+                                        )
                                     except (ValueError, TypeError):
-                                        st.markdown(f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>', unsafe_allow_html=True)
+                                        st.markdown(
+                                            f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>',
+                                            unsafe_allow_html=True,
+                                        )
                                 else:
-                                    st.markdown(f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>',
+                                        unsafe_allow_html=True,
+                                    )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     with gene_col2:
                         st.markdown('<div class="detail-field">', unsafe_allow_html=True)
-                        for col in available_gene_cols[len(available_gene_cols)//2 + len(available_gene_cols)%2:]:
+                        for col in available_gene_cols[
+                            len(available_gene_cols) // 2 + len(available_gene_cols) % 2:
+                        ]:
                             val = row_data[col]
                             if pd.notna(val) and val != "":
                                 if isinstance(val, str) and val.startswith("http"):
-                                    st.markdown(f'<span class="detail-label">{col}:</span> <a href="{val}" target="_blank">{val}</a>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<span class="detail-label">{col}:</span> <a href="{val}" target="_blank">{val}</a>',
+                                        unsafe_allow_html=True,
+                                    )
                                 else:
-                                    st.markdown(f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span>',
+                                        unsafe_allow_html=True,
+                                    )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                 # Cell & Marker information section (two columns)
-                cell_marker_cols = ["Species", "Tissue class", "Tissue type", "Cancer type", "Normal/Tumor", "Cell type", "Marker"]
-                available_cell_marker_cols = [col for col in cell_marker_cols if col in df_result.columns]
+                cell_marker_cols = [
+                    "Species",
+                    "Tissue class",
+                    "Tissue type",
+                    "Cancer type",
+                    "Normal/Tumor",
+                    "Cell type",
+                    "Marker",
+                ]
+                available_cell_marker_cols = [
+                    col for col in cell_marker_cols if col in df_result.columns
+                ]
 
                 if available_cell_marker_cols:
-                    st.markdown("""
+                    st.markdown(
+                        """
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <span>🔬</span>
                             <span>Cell & Marker Information</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
                     cell_col1, cell_col2 = st.columns(2)
 
                     with cell_col1:
                         st.markdown('<div class="detail-field">', unsafe_allow_html=True)
-                        for col in available_cell_marker_cols[:len(available_cell_marker_cols)//2 + len(available_cell_marker_cols)%2]:
+                        for col in available_cell_marker_cols[
+                            : len(available_cell_marker_cols) // 2
+                            + len(available_cell_marker_cols) % 2
+                        ]:
                             val = row_data[col]
                             if pd.notna(val) and val != "":
-                                st.markdown(f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown(
+                                    f'<span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>',
+                                    unsafe_allow_html=True,
+                                )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     with cell_col2:
                         st.markdown('<div class="detail-field">', unsafe_allow_html=True)
-                        for col in available_cell_marker_cols[len(available_cell_marker_cols)//2 + len(available_cell_marker_cols)%2:]:
+                        for col in available_cell_marker_cols[
+                            len(available_cell_marker_cols) // 2
+                            + len(available_cell_marker_cols) % 2:
+                        ]:
                             val = row_data[col]
                             if pd.notna(val) and val != "":
-                                st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown(
+                                    f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>',
+                                    unsafe_allow_html=True,
+                                )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                 # Literature information section
                 lit_cols = ["PMID", "Title", "journal", "Year"]
                 available_lit_cols = [col for col in lit_cols if col in df_result.columns]
 
                 if available_lit_cols:
-                    st.markdown("""
+                    st.markdown(
+                        """
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <span>📚</span>
                             <span>Literature Information</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
                     for col in available_lit_cols:
                         val = row_data[col]
                         if pd.notna(val) and val != "":
                             if col == "PMID" and isinstance(val, str) and val.startswith("http"):
-                                st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <a href="{val}" target="_blank">📖 View Article</a></div>', unsafe_allow_html=True)
+                                st.markdown(
+                                    f'<div class="detail-field"><span class="detail-label">{col}:</span> <a href="{val}" target="_blank">📖 View Article</a></div>',
+                                    unsafe_allow_html=True,
+                                )
                             elif col == "Year":
                                 # Convert to integer
                                 try:
                                     val_int = int(float(val))
-                                    st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val_int}</span></div>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val_int}</span></div>',
+                                        unsafe_allow_html=True,
+                                    )
                                 except (ValueError, TypeError):
-                                    st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>', unsafe_allow_html=True)
+                                    st.markdown(
+                                        f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>',
+                                        unsafe_allow_html=True,
+                                    )
                             else:
-                                st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>', unsafe_allow_html=True)
+                                st.markdown(
+                                    f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>',
+                                    unsafe_allow_html=True,
+                                )
 
                 # Other information section
                 other_cols = ["Technology seq", "Marker source"]
                 available_other_cols = [col for col in other_cols if col in df_result.columns]
 
                 if available_other_cols:
-                    st.markdown("""
+                    st.markdown(
+                        """
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <span>⚙️</span>
                             <span>Additional Information</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
                     for col in available_other_cols:
                         val = row_data[col]
                         if pd.notna(val) and val != "":
-                            st.markdown(f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>', unsafe_allow_html=True)
+                            st.markdown(
+                                f'<div class="detail-field"><span class="detail-label">{col}:</span> <span class="detail-value">{val}</span></div>',
+                                unsafe_allow_html=True,
+                            )
 
                 # Close button
                 st.markdown("---")
