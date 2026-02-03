@@ -22,7 +22,7 @@ def load_data():
 def main():
     st.title("🔍 Cell Type Annotation Tool")
     st.write("""
-    **基于文献等证据的cell type注释与marker探索的交互式平台**。
+    👋欢迎使用本工具！这是一个**基于文献等证据的cell type注释与marker探索的交互式平台**。
     该工具帮助研究者快速识别、筛选并验证细胞类型注释marker，并提供可追溯的文献支持。
     """)
     
@@ -42,7 +42,7 @@ def main():
         st.markdown("**1️⃣ Marker探索**")
         st.write("""
         选择物种及组织类型，探索cell type及其marker全景图，
-        结果默认按照证据数量数量进行排序，
+        结果默认按照证据数量进行排序，
         快速识别高置信度且常用的cell type及其marker。
         """)
 
@@ -73,12 +73,12 @@ def main():
         df = load_data()
 
     # ============================================================
-    # Section 1: Filter by species and tissue_class
+    # Section 1: Marker探索
     # ============================================================
     st.divider()
-    st.header("Section 1: Marker Knowledge Overview")
+    st.header("Section 1: Marker探索")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     # Get unique species
     species_list = df["species"].dropna().unique().tolist()
@@ -100,16 +100,36 @@ def main():
             tissue_class_list.index("Brain") if "Brain" in tissue_class_list else 0
         )
         selected_tissue_class = st.selectbox(
-            "Select Tissue Class", tissue_class_list, index=default_tissue_index
+            "Select Tissue", tissue_class_list, index=default_tissue_index
         )
 
+    
+    
     # Filter by tissue_class
     df_filtered = df_filtered[df_filtered["tissue_class"] == selected_tissue_class]
 
+    # Group by cell_name
+    groupby_cols = ["cell_name"]
+    df_grouped = df_filtered.groupby(groupby_cols, dropna=False).size().reset_index(name="count")
+    df_grouped = df_grouped.sort_values("count", ascending=False)
+    # Get unique celltypes
+    celltypes_list = ["All"] + df_grouped["cell_name"].dropna().unique().tolist()
+    
+    with col3:
+        # Set default to "All"
+        selected_cell_type = st.selectbox(
+        "Select Cell type", celltypes_list, index=celltypes_list.index("All")
+    )
+
+    
     # Group by and count
     groupby_cols = ["cell_type", "cell_name", "marker", "Symbol"]
     df_grouped = df_filtered.groupby(groupby_cols, dropna=False).size().reset_index(name="count")
 
+    if selected_cell_type != "All":
+        df_grouped = df_grouped[df_grouped["cell_name"] == selected_cell_type]
+
+    
     # Add species and tissue_class columns at the beginning
     df_grouped.insert(0, "species", selected_species)
     df_grouped.insert(1, "tissue_class", selected_tissue_class)
@@ -121,7 +141,7 @@ def main():
     df_grouped = df_grouped.rename(
         columns={
             "species": "Species",
-            "tissue_class": "Tissue class",
+            "tissue_class": "Tissue",
             "cell_type": "Normal/Tumor",
             "cell_name": "Cell type",
             "marker": "Marker",
@@ -132,7 +152,11 @@ def main():
 
     # Display results
     st.subheader(f"Results: {len(df_grouped)} unique marker entries")
-    st.write(f"**Species:** {selected_species} | **Tissue Class:** {selected_tissue_class}")
+    if selected_cell_type == "All":
+        st.write(f"**Species:** {selected_species} | **Tissue:** {selected_tissue_class}")
+    else:
+        st.write(f"**Species:** {selected_species} | **Tissue:** {selected_tissue_class} | **Cell type:** {selected_cell_type}")
+    
 
     # Calculate dynamic height based on row count (max 10 rows)
     row_count = min(len(df_grouped), 10)
@@ -148,22 +172,29 @@ def main():
     )
 
     # ============================================================
-    # Section 2: Filter by count threshold and display code
+    # Section 2: 获取marker清单代码
     # ============================================================
     st.divider()
-    st.header("Section 2: Annotation Toolkit")
+    st.header("Section 2: 获取marker清单代码")
 
     # Get max count for slider range
     max_count = int(df_grouped["#Evidence"].max())
+    default_value = min(max_count, 3)
 
-    count_threshold = st.slider(
-        "#Evidence Threshold", min_value=1, max_value=max_count, value=3, step=1
-    )
+    if max_count == 1:
+        # 禁用滑块并设置值为1
+        st.write(f"注：每个cell type & marker pair仅有一条证据，无需调整阈值。")
+        count_threshold = 1
+    else:
+        # 否则显示滑块
+        count_threshold = st.slider(
+            "#Evidence Threshold", min_value=1, max_value=max_count, value=default_value, step=1
+        )
 
     # Filter by count threshold (using new column name "#Evidence")
     df_grouped_filtered = df_grouped[df_grouped["#Evidence"] >= count_threshold].copy()
 
-    st.write(f"**Filtered to {len(df_grouped_filtered)} entries (count >= {count_threshold})**")
+    st.write(f"**Filtered to {len(df_grouped_filtered)} entries (#Evidence >= {count_threshold})**")
 
     # Generate Symbol lists by Cell type (filtered by threshold)
     cell_markers = {}
@@ -202,10 +233,10 @@ def main():
         st.code(output_code, language="python")
 
     # ============================================================
-    # Section 3: Filter raw data by cell_name and marker (cascading)
+    # Section 3: 文献证据追溯
     # ============================================================
     st.divider()
-    st.header("Section 3: Literature Evidence Explorer")
+    st.header("Section 3: 文献证据追溯")
 
     # Filter original raw data by Section 1's Cell type and Marker (using new column names)
     section1_cell_names = df_grouped["Cell type"].dropna().unique()
@@ -286,7 +317,7 @@ def main():
     # Rename and capitalize columns (replace underscores with spaces)
     column_mapping = {
         "species": "Species",
-        "tissue_class": "Tissue class",
+        "tissue_class": "Tissue",
         "tissue_type": "Tissue type",
         "cancer_type": "Cancer type",
         "cell_type": "Normal/Tumor",
