@@ -2,20 +2,20 @@
 
 ## Development Environment Setup
 
-Please run any command in the mamba environment named `cellmarkerAnno`.
+Please run any command in the mamba environment named `cell-type-anno-tool`.
 
-The `mamba` command location is: `/home/hzl/miniforge3/bin/mamba`.
+The `mamba` command location is: `/Users/ender/miniforge3/bin/mamba`.
 
-Here is the example command to install python packages by `pip` in the `cellmarkerAnno` environment:
+Here is the example command to install python packages by `pip` in the `cell-type-anno-tool` environment:
 
 ```bash
-/home/hzl/miniforge3/bin/mamba run -n cellmarkerAnno pip install <package_name>
+/Users/ender/miniforge3/bin/mamba run -n cell-type-anno-tool pip install <package_name>
 ```
 
-And the `streamlit` is installed in the `cellmarkerAnno` environment. You can run the streamlit app by:
+And the `streamlit` is installed in the `cell-type-anno-tool` environment. You can run the streamlit app by:
 
 ```bash
-/home/hzl/miniforge3/bin/mamba run -n cellmarkerAnno streamlit run app.py
+/Users/ender/miniforge3/bin/mamba run -n cell-type-anno-tool streamlit run app.py
 ```
 
 ## Application Overview

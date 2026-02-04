@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
 
 # Configure page (centered layout, not wide)
 st.set_page_config(
@@ -17,6 +18,36 @@ def load_data():
     """Load the CellMarker Excel file."""
     df = pd.read_excel(EXCEL_PATH)
     return df
+
+
+def create_aggrid_config(df, enable_selection=False, selection_mode='single'):
+    """创建 AgGrid 配置"""
+    gb = GridOptionsBuilder.from_dataframe(df)
+
+    # 配置默认列：启用筛选、排序、调整大小
+    gb.configure_default_column(
+        filter=True,              # 启用筛选（包括 String 类型的 text filter）
+        sortable=True,            # 启用排序
+        resizable=True,           # 启用列宽调整
+        editable=False,           # 禁用编辑
+        floatingFilter=True,      # 启用快速筛选栏（在列头下方显示筛选输入框）
+        minWidth=100,             # 设置最小列宽，防止列被压缩
+    )
+
+    # 配置选择模式（如果需要）
+    if enable_selection:
+        gb.configure_selection(
+            selection_mode=selection_mode,  # 'single' 或 'multiple'
+            use_checkbox=False              # 不使用复选框
+        )
+
+    # 配置网格选项
+    gb.configure_grid_options(
+        domLayout='normal',
+        suppressHorizontalScroll=False,  # 启用横向滚动
+    )
+
+    return gb.build()
 
 
 def main():
@@ -169,11 +200,18 @@ def main():
     dynamic_height = row_count * 40 + 50
 
     # Display as sortable dataframe with dynamic height
-    st.dataframe(
+    # 创建 AgGrid 配置（不需要行选择）
+    grid_options = create_aggrid_config(df_grouped, enable_selection=False)
+
+    # 显示 AgGrid
+    AgGrid(
         df_grouped,
-        use_container_width=True,
-        hide_index=True,
+        gridOptions=grid_options,
         height=dynamic_height,
+        width='100%',
+        update_mode=GridUpdateMode.NO_UPDATE,  # 不需要交互更新
+        theme='streamlit',                     # 使用 streamlit 主题
+        fit_columns_on_grid_load=False,  # 不强制适应宽度，允许横向滚动
     )
 
     # ============================================================
@@ -359,33 +397,60 @@ def main():
     dynamic_height = row_count * 40 + 50
 
     # Display as sortable dataframe with row selection
-    event = st.dataframe(
+    # 创建 AgGrid 配置（需要行选择）
+    grid_options = create_aggrid_config(df_result, enable_selection=True, selection_mode='single')
+
+    # 显示 AgGrid
+    grid_result = AgGrid(
         df_result,
-        use_container_width=True,
-        hide_index=True,
+        gridOptions=grid_options,
         height=dynamic_height,
-        on_select="rerun",
-        selection_mode="single-row",
-        column_config={
-            "PMID": st.column_config.LinkColumn(
-                "PMID",
-                display_text=r"https://pubmed.ncbi.nlm.nih.gov/(\d+)/",
-            ),
-        },
+        width='100%',
+        update_mode=GridUpdateMode.SELECTION_CHANGED,  # 选择变更时触发 rerun
+        theme='streamlit',
+        reload_data=False,  # 不重新加载数据，保持选择状态
+        fit_columns_on_grid_load=False,  # 不强制适应宽度，允许横向滚动
     )
 
     # Check if a row is selected
-    # Handle closing details: if s3_selected_row is None (closed), require explicit re-selection
-    if event and event.selection.rows:
-        selected_row_idx = event.selection.rows[0]
+    # 从 grid_result 中获取选中行
+    selected_rows = grid_result.get('selected_rows', [])
+    selected_row_idx = None  # 初始化变量
+
+    # 处理不同的数据类型
+    if selected_rows is not None and len(selected_rows) > 0:
+        # 如果是 DataFrame，使用其索引
+        if hasattr(selected_rows, 'index'):
+            selected_row_idx = selected_rows.index[0]
+            # 转换为整数（AgGrid 可能返回字符串索引）
+            try:
+                selected_row_idx = int(selected_row_idx)
+            except (ValueError, TypeError):
+                pass
+        # 如果有 _index 属性
+        elif hasattr(selected_rows, '_index'):
+            selected_row_idx = selected_rows._index
+        # 否则尝试转换为字典并查找
+        else:
+            # 如果是 DataFrame，转换为字典列表
+            if hasattr(selected_rows, 'to_dict'):
+                selected_rows_list = selected_rows.to_dict('records')
+            # 如果已经是列表，直接使用
+            elif isinstance(selected_rows, list):
+                selected_rows_list = selected_rows
+            else:
+                selected_rows_list = []
+
+            if selected_rows_list:
+                # 使用第一行的原始位置
+                # AgGrid 返回的 DataFrame 通常会保持原始顺序
+                selected_row_idx = 0
+
         current_selection = st.session_state.get("s3_selected_row")
 
-        # Only update if:
-        # 1. First time selection (current_selection is None and s3_needs_init is not set)
-        # 2. Or selecting a different row (current_selection != selected_row_idx)
-        # But NOT if s3_selected_row was just set to None (user closed details - requires explicit re-selection)
+        # 只有点击新行时才更新（排除关闭后的情况）
         s3_just_closed = st.session_state.get("s3_just_closed", False)
-        if not s3_just_closed and (
+        if not s3_just_closed and selected_row_idx is not None and (
             current_selection is None or current_selection != selected_row_idx
         ):
             st.session_state.s3_selected_row = selected_row_idx
