@@ -100,7 +100,9 @@ def create_aggrid_config(df, enable_selection=False, selection_mode='single', li
 def main():
     st.title("🔍 Cell Type Annotation Tool")
     st.write("""
-    👋欢迎使用本工具！这是一个**基于文献等证据的cell type注释与marker探索的交互式平台**。
+    👋欢迎使用本工具！
+    
+    这是一个**基于文献等证据的cell type注释与marker探索的交互式平台**。
     该工具帮助研究者快速识别、筛选并验证细胞类型注释marker，并提供可追溯的文献支持。
     """)
 
@@ -113,9 +115,11 @@ def main():
     
     st.markdown("""
     #### 数据来源
-    本工具使用的数据来源于 [CellMarker 2.0](http://www.bio-bigdata.center/) 数据库，并手工补全缺失的信息，具体过程见文档[整合流程](http://xxx)。未来将整合更多数据库资源，敬请期待...
+    本工具使用的数据来源于 [CellMarker 2.0](http://www.bio-bigdata.center/) 数据库。
+    
+    未来将手工补全缺失的信息、整合更多数据库资源，敬请期待...
     """)
-
+    # 具体过程见文档[整合流程](http://xxx)。
     # ---- Workflow Overview ----
     st.markdown("#### How It Works")
 
@@ -332,72 +336,72 @@ def main():
     section1_cell_names = df_grouped["Cell type"].dropna().unique()
     section1_markers = df_grouped["Marker"].dropna().unique()
 
-    df_candidate = df_filtered[
+    df_result = df_filtered[
         df_filtered["cell_name"].isin(section1_cell_names)
         & df_filtered["marker"].isin(section1_markers)
     ].copy()
 
-    # Get all unique values (using new column names from df_grouped)
-    all_cell_names = sorted(df_grouped["Cell type"].dropna().unique().tolist())
-    all_markers = sorted(df_grouped["Marker"].dropna().unique().tolist())
+    # # Get all unique values (using new column names from df_grouped)
+    # all_cell_names = sorted(df_grouped["Cell type"].dropna().unique().tolist())
+    # all_markers = sorted(df_grouped["Marker"].dropna().unique().tolist())
 
-    # Initialize session state for selections
-    if "s3_cell_name" not in st.session_state:
-        st.session_state.s3_cell_name = "All"
-    if "s3_marker" not in st.session_state:
-        st.session_state.s3_marker = "All"
+    # # Initialize session state for selections
+    # if "s3_cell_name" not in st.session_state:
+    #     st.session_state.s3_cell_name = "All"
+    # if "s3_marker" not in st.session_state:
+    #     st.session_state.s3_marker = "All"
 
-    col3, col4 = st.columns(2)
+    # col3, col4 = st.columns(2)
 
-    with col3:
-        selected_cell_name = st.selectbox(
-            "Select Cell Name",
-            ["All"] + all_cell_names,
-            index=all_cell_names.index(st.session_state.s3_cell_name) + 1
-            if st.session_state.s3_cell_name in all_cell_names
-            else 0,
-            key="s3_cell_name_select",
-        )
+    # with col3:
+    #     selected_cell_name = st.selectbox(
+    #         "Select Cell Name",
+    #         ["All"] + all_cell_names,
+    #         index=all_cell_names.index(st.session_state.s3_cell_name) + 1
+    #         if st.session_state.s3_cell_name in all_cell_names
+    #         else 0,
+    #         key="s3_cell_name_select",
+    #     )
 
-    # If cell_name is selected, filter markers; otherwise show all
-    if selected_cell_name != "All":
-        available_markers = sorted(
-            df_grouped[df_grouped["Cell type"] == selected_cell_name]["Marker"]
-            .dropna()
-            .unique()
-            .tolist()
-        )
-        # Reset marker if it's no longer in available options
-        if (
-            st.session_state.s3_marker != "All"
-            and st.session_state.s3_marker not in available_markers
-        ):
-            st.session_state.s3_marker = "All"
-    else:
-        available_markers = all_markers
+    # # If cell_name is selected, filter markers; otherwise show all
+    # if selected_cell_name != "All":
+    #     available_markers = sorted(
+    #         df_grouped[df_grouped["Cell type"] == selected_cell_name]["Marker"]
+    #         .dropna()
+    #         .unique()
+    #         .tolist()
+    #     )
+    #     # Reset marker if it's no longer in available options
+    #     if (
+    #         st.session_state.s3_marker != "All"
+    #         and st.session_state.s3_marker not in available_markers
+    #     ):
+    #         st.session_state.s3_marker = "All"
+    # else:
+    #     available_markers = all_markers
 
-    with col4:
-        selected_marker = st.selectbox(
-            "Select Marker",
-            ["All"] + available_markers,
-            index=available_markers.index(st.session_state.s3_marker) + 1
-            if st.session_state.s3_marker in available_markers
-            else 0,
-            key="s3_marker_select",
-        )
+    # with col4:
+    #     selected_marker = st.selectbox(
+    #         "Select Marker",
+    #         ["All"] + available_markers,
+    #         index=available_markers.index(st.session_state.s3_marker) + 1
+    #         if st.session_state.s3_marker in available_markers
+    #         else 0,
+    #         key="s3_marker_select",
+    #     )
 
-    # Update session state
-    st.session_state.s3_cell_name = selected_cell_name
-    st.session_state.s3_marker = selected_marker
+    # # Update session state
+    # st.session_state.s3_cell_name = selected_cell_name
+    # st.session_state.s3_marker = selected_marker
 
-    # Apply Section 3 filters (using original column names from raw data)
-    df_result = df_candidate.copy()
+    # # Apply Section 3 filters (using original column names from raw data)
+    # df_result = df_candidate.copy()
 
-    if selected_cell_name != "All":
-        df_result = df_result[df_result["cell_name"] == selected_cell_name]
+    # if selected_cell_name != "All":
+    #     df_result = df_result[df_result["cell_name"] == selected_cell_name]
 
-    if selected_marker != "All":
-        df_result = df_result[df_result["marker"] == selected_marker]
+    # if selected_marker != "All":
+    #     df_result = df_result[df_result["marker"] == selected_marker]
 
     # Remove unwanted columns
     columns_to_drop = ["uberonongology_id", "cellontology_id"]
