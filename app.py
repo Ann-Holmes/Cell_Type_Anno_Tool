@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 # Configure page (set up layout)
 st.set_page_config(
@@ -21,8 +21,15 @@ def load_data():
     return df
 
 
-def create_aggrid_config(df, enable_selection=False, selection_mode='single'):
-    """创建 AgGrid 配置"""
+def create_aggrid_config(df, enable_selection=False, selection_mode='single', link_columns=None):
+    """创建 AgGrid 配置
+
+    Args:
+        df: DataFrame
+        enable_selection: 是否启用行选择
+        selection_mode: 选择模式 ('single' 或 'multiple')
+        link_columns: 需要渲染为链接的列名列表
+    """
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # 配置默认列：启用筛选、排序、调整大小
@@ -34,6 +41,42 @@ def create_aggrid_config(df, enable_selection=False, selection_mode='single'):
         floatingFilter=True,      # 启用快速筛选栏（在列头下方显示筛选输入框）
         minWidth=100,             # 设置最小列宽，防止列被压缩
     )
+
+    # 为指定的列配置链接渲染器
+    if link_columns:
+        for col_name in link_columns:
+            if col_name in df.columns:
+                gb.configure_column(
+                    field=col_name,
+                    cellRenderer=JsCode("""
+                    class LinkRenderer {
+                        init(params) {
+                            this.eGui = document.createElement('a');
+                            this.eGui.href = params.value;
+                            this.eGui.target = '_blank';
+
+                            // 从 URL 中提取 PMID 数字
+                            // URL 格式: https://pubmed.ncbi.nlm.nih.gov/12396479/
+                            if (params.value && params.value.includes('pubmed.ncbi.nlm.nih.gov')) {
+                                const match = params.value.match(/\/(\d+)\//);
+                                this.eGui.textContent = match ? match[1] : params.value;
+                            } else {
+                                this.eGui.textContent = params.value;
+                            }
+
+                            this.eGui.style.textDecoration = 'none';
+                            this.eGui.style.color = '#1f77b4';
+                            this.eGui.style.cursor = 'pointer';
+                        }
+                        getGui() {
+                            return this.eGui;
+                        }
+                        refresh() {
+                            return false;
+                        }
+                    }
+                    """)
+                )
 
     # 配置选择模式（如果需要）
     if enable_selection:
@@ -398,8 +441,13 @@ def main():
     dynamic_height = row_count * 40 + 50
 
     # Display as sortable dataframe with row selection
-    # 创建 AgGrid 配置（需要行选择）
-    grid_options = create_aggrid_config(df_result, enable_selection=True, selection_mode='single')
+    # 创建 AgGrid 配置（需要行选择，PMID 列渲染为链接）
+    grid_options = create_aggrid_config(
+        df_result,
+        enable_selection=True,
+        selection_mode='single',
+        link_columns=['PMID']  # PMID 列渲染为可点击链接
+    )
 
     # 显示 AgGrid
     grid_result = AgGrid(
@@ -411,6 +459,7 @@ def main():
         theme='streamlit',
         reload_data=False,  # 不重新加载数据，保持选择状态
         fit_columns_on_grid_load=False,  # 不强制适应宽度，允许横向滚动
+        allow_unsafe_jscode=True,  # 允许使用自定义 JsCode (cellRenderer)
     )
 
     # Check if a row is selected
